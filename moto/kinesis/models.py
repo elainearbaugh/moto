@@ -9,7 +9,9 @@ import itertools
 
 from operator import attrgetter
 from hashlib import md5
+from mock import Mock
 
+from botocore.event_stream import EventStream
 from moto.compat import OrderedDict
 from moto.core import BaseBackend, BaseModel
 from moto.core.utils import unix_time
@@ -303,6 +305,7 @@ class KinesisBackend(BaseBackend):
     def __init__(self):
         self.streams = OrderedDict()
         self.delivery_streams = {}
+        self.consumers = {}
 
     def create_stream(self, stream_name, shard_count, region):
         if stream_name in self.streams:
@@ -327,6 +330,52 @@ class KinesisBackend(BaseBackend):
         if stream_name in self.streams:
             return self.streams.pop(stream_name)
         raise StreamNotFoundError(stream_name)
+
+    def register_stream_consumer(self, stream_arn, consumer_name):
+        self.consumers[consumer_name] = stream_arn
+        return self._name_to_arn(consumer_name)
+
+    def consumer_status(self, stream_arn, consumer_name, consumer_arn):
+        if self.consumers.get(consumer_name) != stream_arn:
+            return 'DELETING'
+        return 'ACTIVE'
+
+    def _construct_record(self, records, continuation_sequence_no, millis_behind):
+        return {
+            'SubscribeToShardEvent': {
+                'Records': records,
+                'ContinuationSequenceNumber': continuation_sequence_no,
+                'MillisBehindLatest': millis_behind
+            }
+        }
+
+    def subscribe_to_shard(self, consumer_arn, shard_id, starting_position):
+        consumer_name = self._arn_to_name(consumer_arn)
+        stream_arn = self.consumers[consumer_name]
+
+        stream = self.describe_stream(stream_arn)
+        shard = stream.get_shard(shard_id)
+
+        raw_stream = Mock()
+        def stream():
+            yield self._construct_record([], '12345', 0)
+
+            # TODO: figure out last_sequence_id and limit from starting_position
+            records, last_sequence_id, millis_behind_latest = shard.get_records(TODO, TODO)
+
+            yield self._construct_record(records, '12346', 0)
+
+        raw_stream.stream = stream
+        raw_stream.close = lambda: None
+
+        parser = Mock()
+        parser.parse = lambda x, y: x
+
+        event_stream = EventStream(raw_stream, None, parser, 'test')
+        return {
+            'EventStream': event_stream,
+            'ResponseMetadata': {}
+        }
 
     def get_shard_iterator(self, stream_name, shard_id, shard_iterator_type, starting_sequence_number,
                            at_timestamp):
@@ -497,6 +546,12 @@ class KinesisBackend(BaseBackend):
         for key in tag_keys:
             if key in stream.tags:
                 del stream.tags[key]
+
+    def _name_to_arn(self, name):
+        return 'arn:{}'.format(name)
+
+    def _arn_to_name(self, arn):
+        return arn[5:]
 
 
 kinesis_backends = {}
