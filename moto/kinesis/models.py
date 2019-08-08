@@ -339,7 +339,7 @@ class KinesisBackend(BaseBackend):
             }
         }
 
-    def consumer_status(self, stream_arn, consumer_name, consumer_arn):
+    def describe_stream_consumer(self, stream_arn, consumer_name, consumer_arn):
         status = 'ACTIVE'
         if self.consumers.get(consumer_name) != stream_arn:
             status = 'DELETING'

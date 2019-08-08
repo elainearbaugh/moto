@@ -253,11 +253,11 @@ class KinesisResponse(BaseResponse):
             stream_arn, consumer_name)
         return json.dumps(response)
 
-    def consumer_status(self):
+    def describe_stream_consumer(self):
         stream_arn = self.parameters.get('StreamARN')
         consumer_name = self.parameters.get('ConsumerName')
         consumer_arn = self.parameters.get('ConsumerARN')
-        response = self.kinesis_backend.consumer_status(
+        response = self.kinesis_backend.describe_stream_consumer(
             stream_arn, consumer_name, consumer_arn)
         return json.dumps(response)
 
