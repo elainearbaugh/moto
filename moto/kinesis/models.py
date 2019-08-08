@@ -11,7 +11,7 @@ from operator import attrgetter
 from hashlib import md5
 from mock import Mock
 
-from botocore.event_stream import EventStream
+from botocore.eventstream import EventStream
 from moto.compat import OrderedDict
 from moto.core import BaseBackend, BaseModel
 from moto.core.utils import unix_time
@@ -333,12 +333,22 @@ class KinesisBackend(BaseBackend):
 
     def register_stream_consumer(self, stream_arn, consumer_name):
         self.consumers[consumer_name] = stream_arn
-        return self._name_to_arn(consumer_name)
+        return {
+            'Consumer': {
+                'ConsumerARN': self._name_to_arn(consumer_name)
+            }
+        }
 
     def consumer_status(self, stream_arn, consumer_name, consumer_arn):
+        status = 'ACTIVE'
         if self.consumers.get(consumer_name) != stream_arn:
-            return 'DELETING'
-        return 'ACTIVE'
+            status = 'DELETING'
+
+        return {
+            'ConsumerDescription': {
+                'ConsumerStatus': status
+            }
+        }
 
     def _construct_record(self, records, continuation_sequence_no, millis_behind):
         return {

@@ -245,3 +245,27 @@ class KinesisResponse(BaseResponse):
         tag_keys = self.parameters.get('TagKeys')
         self.kinesis_backend.remove_tags_from_stream(stream_name, tag_keys)
         return json.dumps({})
+
+    def register_stream_consumer(self):
+        stream_arn = self.parameters.get('StreamARN')
+        consumer_name = self.parameters.get('ConsumerName')
+        response = self.kinesis_backend.register_stream_consumer(
+            stream_arn, consumer_name)
+        return json.dumps(response)
+
+    def consumer_status(self):
+        stream_arn = self.parameters.get('StreamARN')
+        consumer_name = self.parameters.get('ConsumerName')
+        consumer_arn = self.parameters.get('ConsumerARN')
+        response = self.kinesis_backend.consumer_status(
+            stream_arn, consumer_name, consumer_arn)
+        return json.dumps(response)
+
+    def subscribe_to_shard(self):
+        consumer_arn = self.parameters.get('ConsumerARN')
+        shard_id = self.parameters.get('ShardId')
+        starting_position = self.parameters.get('StartingPosition')
+        response = self.kinesis_backend.subscribe_to_shard(
+            consumer_arn, shard_id, starting_position
+        )
+        return json.dumps(response)
