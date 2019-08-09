@@ -366,22 +366,34 @@ class KinesisBackend(BaseBackend):
         stream = self.describe_stream(stream_arn)
         shard = stream.get_shard(shard_id)
 
-        raw_stream = Mock()
+        event_stream = Mock()
         def stream():
             yield self._construct_record([], '12345', 0)
 
-            # TODO: figure out last_sequence_id and limit from starting_position
-            records, last_sequence_id, millis_behind_latest = shard.get_records(TODO, TODO)
+            sp_type = starting_position['Type']
 
-            yield self._construct_record(records, '12346', 0)
+            if sp_type == 'AFTER_SEQUENCE_NUMBER':
+                records, continuation_sequence_no, millis_behind_latest = \
+                    shard.get_records(starting_position['SequenceNumber'],
+                                      shard.get_max_sequence_number())
+            elif sp_type == 'AT_TIMESTAMP':
+                sequence_no = shard.get_sequence_number_at(starting_position['Timestamp'])
+                records, continuation_sequence_no, millis_behind_latest = \
+                    shard.get_records(sequence_no, shard.get_max_sequence_number())
+            elif sp_type == 'TRIM_HORIZON':
+                records, continuation_sequence_no, millis_behind_latest  = \
+                    shard.get_records(shard.get_min_sequence_number(),
+                                      shard.get_max_sequence_number())
+            elif sp_type == 'LATEST':
+                records, continuation_sequence_no, millis_behind_latest = \
+                    shard.get_records(shard.get_max_sequence_number(),
+                                      shard.get_max_sequence_number)
 
-        raw_stream.stream = stream
-        raw_stream.close = lambda: None
+            yield self._construct_record(records, continuation_sequence_no, millis_behind_latest)
 
-        parser = Mock()
-        parser.parse = lambda x, y: x
+        event_stream.__iter__ = stream()
+        event_stream.close = lambda: None
 
-        event_stream = EventStream(raw_stream, None, parser, 'test')
         return {
             'EventStream': event_stream,
             'ResponseMetadata': {}
