@@ -268,4 +268,4 @@ class KinesisResponse(BaseResponse):
         response = self.kinesis_backend.subscribe_to_shard(
             consumer_arn, shard_id, starting_position
         )
-        return response
+        return json.dumps(response)
