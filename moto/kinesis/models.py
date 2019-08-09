@@ -561,7 +561,7 @@ class KinesisBackend(BaseBackend):
         return 'arn:{}'.format(name)
 
     def _arn_to_name(self, arn):
-        return arn[5:]
+        return arn[4:]
 
 
 kinesis_backends = {}
