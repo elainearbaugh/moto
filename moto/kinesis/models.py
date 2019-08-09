@@ -361,7 +361,7 @@ class KinesisBackend(BaseBackend):
 
     def subscribe_to_shard(self, consumer_arn, shard_id, starting_position):
         consumer_name = self._arn_to_name(consumer_arn)
-        stream_arn = self.consumers[consumer_name]
+        stream_arn = self._arn_to_name(self.consumers[consumer_name])
 
         stream = self.describe_stream(stream_arn)
         shard = stream.get_shard(shard_id)
@@ -558,10 +558,12 @@ class KinesisBackend(BaseBackend):
                 del stream.tags[key]
 
     def _name_to_arn(self, name):
-        return 'arn:{}'.format(name)
+        '''Fake ARN for consumer groups'''
+        return 'arn:aws:kinesis/{}'.format(name)
 
     def _arn_to_name(self, arn):
-        return arn[4:]
+        '''Get resource name from ARN'''
+        return arn.split('/')[1]
 
 
 kinesis_backends = {}
